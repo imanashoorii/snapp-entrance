@@ -24,8 +24,8 @@ services:
     container_name: backend
     hostname: backend
     environment:
-      - DEBUG=True
-      - ALLOWED_HOSTS="0.0.0.0,*,app"
+      - DEBUG=False
+      - ALLOWED_HOSTS=*
     expose:
       - 8000
     networks:
