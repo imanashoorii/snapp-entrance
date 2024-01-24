@@ -1,3 +1,4 @@
+import traceback
 from datetime import timedelta, datetime
 
 from django.db.models import Min
@@ -45,12 +46,19 @@ class DelayOrderAPIView(generics.GenericAPIView):
                         return Response({'message': 'سفارش در صف تاخیر قراردارد یا هنوز زمان سفارش کامل نشده است'},
                                         status=status.HTTP_400_BAD_REQUEST)
             except Trip.DoesNotExist:
-                report = ReportDelay(order=order)
-                report.save()
-                return Response(
-                    {'message': 'سفارش در صف تاخیر قرار گرفت.'},
-                    status=status.HTTP_200_OK
-                )
+                existing_delay_report = ReportDelay.objects.filter(order=order).first()
+                if not existing_delay_report:
+                    report = ReportDelay(order=order)
+                    report.save()
+                    return Response(
+                        {'message': 'سفارش در صف تاخیر قرار گرفت.'},
+                        status=status.HTTP_200_OK
+                    )
+                else:
+                    return Response(
+                        {'message': 'سفارش در صف تاخیر قرار دارد.'},
+                        status=status.HTTP_200_OK
+                    )
 
         except Order.DoesNotExist:
             return Response(
@@ -67,12 +75,13 @@ class AssignOrderToEmployeeAPIView(generics.GenericAPIView):
             serializer = AssignEmployeeSerializer(data=request.data)
             if serializer.is_valid():
                 employee_id = serializer.validated_data['employee']
-
                 earliest_delay_report = ReportDelay.objects.all().aggregate(Min('created_at'))
-                if earliest_delay_report:
+                if earliest_delay_report.get("created_at__min") is None:
+                    return Response({'message': 'سفارشی در لیست تاخیر موجود نیست'},
+                                    status=status.HTTP_404_NOT_FOUND)
+                else:
                     earliest_report_time = earliest_delay_report['created_at__min']
                     delay_report_to_assign = ReportDelay.objects.filter(created_at=earliest_report_time).first()
-
                     if not delay_report_to_assign.order.assigned_employee:
                         employee_to_assign = Employee.objects.get(pk=employee_id)
                         employee_to_assign.has_inspections = True
@@ -89,9 +98,6 @@ class AssignOrderToEmployeeAPIView(generics.GenericAPIView):
                     else:
                         return Response({'message': 'سفارش درحال پیگیری است.'},
                                         status=status.HTTP_400_BAD_REQUEST)
-
-                else:
-                    return Response({'message': 'سفارشی در لیست تاخیر موجود نیست'}, status=status.HTTP_404_NOT_FOUND)
             else:
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except Employee.DoesNotExist:

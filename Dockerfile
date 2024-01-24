@@ -14,7 +14,7 @@ RUN pip install --upgrade pip
 COPY requirements.txt /usr/src/app
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . /app/
+COPY . /usr/src/app/
 
 RUN sed -i "s/DEBUG = .*/DEBUG = $DEBUG/" /usr/src/app/core/settings.py && \
     sed -i "s/ALLOWED_HOSTS = .*/ALLOWED_HOSTS = $ALLOWED_HOSTS/" /usr/src/app/core/settings.py
