@@ -65,6 +65,11 @@ To list all the weekly delays of a vendor, send a GET request to this view and s
 * `delay/report/weekly`: List weekly delays of a vendor using a GET request as described above.
 * `delay/assign`: Assign operator to a delay using a POST request as described above.
 
+### Tests
+You can easily run written tests by the below command. 
+   ```bash
+      python manage.py test api.tests
+   ```
 ### Contact
 For any inquiries, please contact me at [imanashoorii.77@gmail.com](imanashoorii.77@gmail.com) .
 
