@@ -81,4 +81,3 @@ class VendorDelayAPIViewTestCase(APITestCase):
         self.assertEqual(len(response.data), 2)
         self.assertIn('Vendor1', [item['vendor'] for item in response.data])
         self.assertIn('Vendor2', [item['vendor'] for item in response.data])
-

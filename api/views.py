@@ -25,8 +25,8 @@ class DelayOrderAPIView(generics.GenericAPIView):
                     if not existing_delay_report and order.delivery_time < datetime.now():
                         '''
                         Send request to external service to get new estimated delay.
-                        Note: https://run.mocky.io/v3/122c2796-5df4-461c-ab75-87c1192b17f7 <- this api mocker is not working so 
-                        I mock it manually.
+                        Note: https://run.mocky.io/v3/122c2796-5df4-461c-ab75-87c1192b17f7 <- this api mocker is
+                        not working so I mock it manually.
                         '''
                         response = {"estimated_delivery_time": 15}
                         estimated_delivery_time = response.get('estimated_delivery_time')
