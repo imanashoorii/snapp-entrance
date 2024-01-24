@@ -1,0 +1,46 @@
+version: '3.9'
+
+services:
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    container_name: nginx
+    hostname: nginx
+    ports:
+      - "80:80"
+    depends_on:
+      - web
+    volumes:
+      - nginx_conf:/etc/nginx/conf.d/
+      - static_volume:/usr/src/app/static
+    networks:
+      - app
+    restart: always
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: backend
+    hostname: backend
+    environment:
+      - DEBUG=True
+      - ALLOWED_HOSTS="0.0.0.0,*,app"
+    expose:
+      - 8000
+    networks:
+      - app
+    volumes:
+      - static_volume:/usr/src/app/static
+    command: gunicorn core.wsgi:application --bind 0.0.0.0:8000
+    restart: always
+
+volumes:
+  nginx_conf:
+    name: nginx_conf
+  static_volume:
+    name: static_volume
+
+networks:
+  app:
+    name: app
