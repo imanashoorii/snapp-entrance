@@ -23,7 +23,7 @@ This Django app serves as a simple and a basic concept of Snappfood delivery sys
    
 ## Docker Installation
 
-Just run ```docker compose up -d --build``` and easily you can use with the server ip and 8000 port.
+Just run ```docker compose up -d --build``` and easily you can use with the server ip and 80 port.
 ## Usage
 ### Running the Development Server
 Start the development server:
