@@ -1,5 +1,8 @@
+import time
+import traceback
 from datetime import timedelta, datetime
 
+from django.db import transaction
 from django.db.models import Min
 
 from rest_framework import generics
@@ -70,39 +73,43 @@ class AssignOrderToEmployeeAPIView(generics.GenericAPIView):
     serializer_class = AssignEmployeeSerializer
 
     def post(self, request):
-        try:
-            serializer = AssignEmployeeSerializer(data=request.data)
-            if serializer.is_valid():
+        with transaction.atomic():
+            time.sleep(10)
+            try:
+                serializer = AssignEmployeeSerializer(data=request.data)
+                if not serializer.is_valid():
+                    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
                 employee_id = serializer.validated_data['employee']
-                earliest_delay_report = ReportDelay.objects.all().aggregate(Min('created_at'))
+                earliest_delay_report = ReportDelay.objects.filter(order__assigned_employee__isnull=True).aggregate(Min('created_at'))
                 if earliest_delay_report.get("created_at__min") is None:
                     return Response({'message': 'سفارشی در لیست تاخیر موجود نیست'},
                                     status=status.HTTP_404_NOT_FOUND)
-                else:
-                    earliest_report_time = earliest_delay_report['created_at__min']
-                    delay_report_to_assign = ReportDelay.objects.filter(created_at=earliest_report_time).first()
-                    if not delay_report_to_assign.order.assigned_employee:
-                        employee_to_assign = Employee.objects.get(pk=employee_id)
-                        employee_to_assign.has_inspections = True
-                        employee_to_assign.save()
+                earliest_report_time = earliest_delay_report['created_at__min']
+                delay_report_to_assign = ReportDelay.objects.filter(order__assigned_employee__isnull=True
+                                                                    , created_at=earliest_report_time).first()
 
-                        delay_report_to_assign.order.assigned_employee = employee_to_assign
-                        delay_report_to_assign.order.save()
+                if not delay_report_to_assign:
+                    return Response({'message': 'موردی برای گزارش وجود ندارد.'},
+                                    status=status.HTTP_400_BAD_REQUEST)
+                employee_to_assign = Employee.objects.get(pk=employee_id)
+                if employee_to_assign.has_inspections:
+                    return Response({'message': 'شما مورد بررسی نشده دارید.'},
+                                    status=status.HTTP_400_BAD_REQUEST)
+                employee_to_assign.has_inspections = True
+                employee_to_assign.save()
 
-                        return Response({'message': 'درخواست تاخیر با موفقیت به اوپراتور تخصیص داده شد.'},
-                                        status=status.HTTP_200_OK)
-                    elif delay_report_to_assign.order.assigned_employee and delay_report_to_assign.order.assigned_employee.has_inspections:
-                        return Response({'message': 'این اوپراتور درخواستی سفارش درحال پیگیری دارد.'},
-                                        status=status.HTTP_400_BAD_REQUEST)
-                    else:
-                        return Response({'message': 'سفارش درحال پیگیری است.'},
-                                        status=status.HTTP_400_BAD_REQUEST)
-            else:
-                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        except Employee.DoesNotExist:
-            return Response({'message': 'اوپراتور یافت نشد.'}, status=status.HTTP_404_NOT_FOUND)
-        except Exception as e:
-            return Response({'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                delay_report_to_assign.order.assigned_employee = employee_to_assign
+                delay_report_to_assign.order.save()
+
+                return Response({'message': 'درخواست تاخیر با موفقیت به اوپراتور تخصیص داده شد.',
+                                 'order': delay_report_to_assign.order.id},
+                                status=status.HTTP_200_OK)
+
+            except Employee.DoesNotExist:
+                return Response({'message': 'اوپراتور یافت نشد.'}, status=status.HTTP_404_NOT_FOUND)
+            except Exception as e:
+                print(traceback.format_exc())
+                return Response({'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class VendorDelayAPIView(generics.ListAPIView):
